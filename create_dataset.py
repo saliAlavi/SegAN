@@ -30,15 +30,18 @@ for folder in main_dir:
     for i, file in enumerate(cur_dir_files):
         print(file)
         file_path = os.path.join(cur_dir, file)
+        #save_path = os.path.join(dataset_path, folder,image_types[i], file)
+        #make_dir(os.path.join(dataset_path, folder,image_types[i]))
         save_path = os.path.join(dataset_path, image_types[i], file)
+        #make_dir(os.path.join(dataset_path, folder, image_types[i]))
         imgVol = nib.load(file_path)
         npdata = imgVol.get_fdata()
         npdata = npdata.astype(np.uint8)
         for j, image in enumerate(npdata.transpose(2, 0, 1)):
             im = Image.fromarray(image)
             im.save(save_path + str(j) + '.png')
-        if 'seg' in file_path:
-            break
+        #if 'seg' in file_path:
+         #   break
 
 
 
