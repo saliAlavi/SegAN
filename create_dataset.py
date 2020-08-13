@@ -30,18 +30,37 @@ for folder in main_dir:
     for i, file in enumerate(cur_dir_files):
         print(file)
         file_path = os.path.join(cur_dir, file)
-        #save_path = os.path.join(dataset_path, folder,image_types[i], file)
-        #make_dir(os.path.join(dataset_path, folder,image_types[i]))
-        save_path = os.path.join(dataset_path, image_types[i], file)
-        #make_dir(os.path.join(dataset_path, folder, image_types[i]))
-        imgVol = nib.load(file_path)
-        npdata = imgVol.get_fdata()
-        npdata = npdata.astype(np.uint8)
-        for j, image in enumerate(npdata.transpose(2, 0, 1)):
-            im = Image.fromarray(image)
-            im.save(save_path + str(j) + '.png')
-        #if 'seg' in file_path:
-         #   break
+        if 'seg' in file_path:
+            # print(file)
+            imgVol = nib.load(file_path)
+            npdata = imgVol.get_fdata()
+            npdata = npdata.astype(np.uint8)
+            x = npdata.shape[0]
+            y = npdata.shape[1]
+            n = npdata.shape[2]
+            array = np.zeros((x, y, 3, n))
+            array[:, :, 0, :] = np.where(npdata == 1, 255 * np.ones((x, y, n)), np.zeros((x, y, n)))
+            array[:, :, 1, :] = np.where(npdata == 2, 255 * np.ones((x, y, n)), np.zeros((x, y, n)))
+            array[:, :, 2, :] = np.where(npdata == 4, 255 * np.ones((x, y, n)), np.zeros((x, y, n)))
+            array = array.astype(np.uint8)
+            array = array.transpose(3, 0, 1, 2)
+            # print(array.shape)
+            # plt.imshow(array[:,:,:,51])
+            # write_gif(array.transpose((3,0,1,2)),f'movie{i}.gif',fps=300)
+            save_path = os.path.join(dataset_path, 'segmentation', file)
+            for j, image in enumerate(array):
+                # print(image.shape)
+                im = Image.fromarray(image)
+                im.save(save_path + str(j) + '.png')
+        else:
+            save_path = os.path.join(dataset_path, image_types[i], file)
+            #make_dir(os.path.join(dataset_path, folder, image_types[i]))
+            imgVol = nib.load(file_path)
+            npdata = imgVol.get_fdata()
+            npdata = npdata.astype(np.uint8)
+            for j, image in enumerate(npdata.transpose(2, 0, 1)):
+                im = Image.fromarray(image)
+                im.save(save_path + str(j) + '.png')
 
 
 
