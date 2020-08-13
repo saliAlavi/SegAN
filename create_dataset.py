@@ -27,10 +27,10 @@ for image_type in image_types:
 for folder in main_dir:
     cur_dir = os.path.join(folder_name, folder)
     cur_dir_files = os.listdir(cur_dir)
-    for i, file in enumerate(cur_dir_files):
-        print(file)
-        file_path = os.path.join(cur_dir, file)
-        if 'seg' in file_path:
+    for i, file_name in enumerate(cur_dir_files):
+        #print(file_name)
+        file_path = os.path.join(cur_dir, file_name)
+        if 'seg' in file_name:
             # print(file)
             imgVol = nib.load(file_path)
             npdata = imgVol.get_fdata()
@@ -47,20 +47,24 @@ for folder in main_dir:
             # print(array.shape)
             # plt.imshow(array[:,:,:,51])
             # write_gif(array.transpose((3,0,1,2)),f'movie{i}.gif',fps=300)
-            save_path = os.path.join(dataset_path, 'segmentation', file)
+            save_path = os.path.join(dataset_path, 'segmentation', file_name)
+            print('saving', file_name, 'in',save_path)
             for j, image in enumerate(array):
                 # print(image.shape)
                 im = Image.fromarray(image)
                 im.save(save_path + str(j) + '.png')
         else:
-            save_path = os.path.join(dataset_path, image_types[i], file)
-            #make_dir(os.path.join(dataset_path, folder, image_types[i]))
-            imgVol = nib.load(file_path)
-            npdata = imgVol.get_fdata()
-            npdata = npdata.astype(np.uint8)
-            for j, image in enumerate(npdata.transpose(2, 0, 1)):
-                im = Image.fromarray(image)
-                im.save(save_path + str(j) + '.png')
+            img_input_types=['flair',  't1ce', 't2','t1']
+            for img_t in img_input_types:
+                if img_t in file_name:
+                    save_path = os.path.join(dataset_path, img_t, file_name)
+                    #make_dir(os.path.join(dataset_path, folder, image_types[i]))
+                    imgVol = nib.load(file_path)
+                    npdata = imgVol.get_fdata()
+                    npdata = npdata.astype(np.uint8)
+                    for j, image in enumerate(npdata.transpose(2, 0, 1)):
+                        im = Image.fromarray(image)
+                        im.save(save_path + str(j) + '.png')
 
 
 

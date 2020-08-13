@@ -13,7 +13,10 @@ def get_data(flair_imgs_dir, t1ce_imgs_dir, t2_imgs_dir, gt_imgs_dir, train_val_
     t1ce_imgs_list = os.listdir(t1ce_imgs_dir)
     t2_imgs_list = os.listdir(t2_imgs_dir)
     gt_imgs_list = os.listdir(gt_imgs_dir)
-
+    print(len(flair_imgs_list))
+    print(len(t1ce_imgs_list))
+    print(len(t2_imgs_list))
+    print(len(gt_imgs_list))
     flair_imgs_list.sort()
     t1ce_imgs_list.sort()
     t2_imgs_list.sort()
