@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     c_parameters = list(critic_1.parameters()) + list(critic_2.parameters()) + list(critic_3.parameters())
     #optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
-    optimizer_c=optimizer_s =optim.Adam(s_parameters, lr=lr, betas=(beta1, 0.999))
+    optimizer_c=optimizer_s =optim.Adam(c_parameters, lr=lr, betas=(beta1, 0.999))
     #if torch.cuda.is_available():
     if train_gpu:
         segmentor = segmentor.cuda()
