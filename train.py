@@ -18,12 +18,12 @@ if __name__ == "__main__":
     d_in = 3
     d_out = 1
     learning_rate = 0.00002
-    epochs = 10
     threshold = 0.5
-    train_gpu=True
-    batch_size=160
-    lr=0.02
-    beta1=0.5
+    train_gpu = True
+    batch_size = 2
+    epochs = 10
+    lr = 0.02
+    beta1 = 0.5
     writer = SummaryWriter(log_dir="./runs")
 
     # NetS = Segmentor()
@@ -32,39 +32,40 @@ if __name__ == "__main__":
     torch.manual_seed(100)
     # Instantiate the Segmentor(3 output channels) and 3 Critics (1 input channel)
     segmentor = Segmentor(3, 3)
+    critic_0 = Critic(3)
     critic_1 = Critic(3)
     critic_2 = Critic(3)
-    critic_3 = Critic(3)
 
     torch.manual_seed(42)
     # Define the optimizers
     s_parameters = segmentor.parameters()
-    #optimizer_s = torch.optim.RMSprop(s_parameters, lr=learning_rate)
-    optimizer_s =optim.Adam(s_parameters, lr=lr, betas=(beta1, 0.999))
+    # optimizer_s = torch.optim.RMSprop(s_parameters, lr=learning_rate)
+    optimizer_s = optim.Adam(s_parameters, lr=lr, betas=(beta1, 0.999))
 
-    c_parameters = list(critic_1.parameters()) + list(critic_2.parameters()) + list(critic_3.parameters())
-    #optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
-    optimizer_c=optimizer_s =optim.Adam(c_parameters, lr=lr, betas=(beta1, 0.999))
-    #if torch.cuda.is_available():
+    c_parameters = list(critic_0.parameters()) + list(critic_1.parameters()) + list(critic_2.parameters())
+    # optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
+    optimizer_c = optimizer_s = optim.Adam(c_parameters, lr=lr, betas=(beta1, 0.999))
+    # if torch.cuda.is_available():
     if train_gpu:
         segmentor = segmentor.cuda()
+        critic_0 = critic_0.cuda()
         critic_1 = critic_1.cuda()
         critic_2 = critic_2.cuda()
-        critic_3 = critic_3.cuda()
 
-    #for i in range(epochs):
-        # Set the model to train mode
+    # for i in range(epochs):
+    # Set the model to train mode
     segmentor.train()
+    critic_0.train()
     critic_1.train()
     critic_2.train()
-    critic_3.train()
 
     flair_imgs_dir = './dataset/flair'
     t1ce_imgs_dir = './dataset/t1ce'
     t2_imgs_dir = './dataset/t2'
     gt_imgs_dir = './dataset/segmentation'
 
-    train_tuple, validation_tuple, test_tuple = get_data(flair_imgs_dir=flair_imgs_dir, t1ce_imgs_dir=t1ce_imgs_dir, t2_imgs_dir=t2_imgs_dir, gt_imgs_dir=gt_imgs_dir)
+    train_tuple, validation_tuple, test_tuple = get_data(flair_imgs_dir=flair_imgs_dir, t1ce_imgs_dir=t1ce_imgs_dir,
+                                                         t2_imgs_dir=t2_imgs_dir, gt_imgs_dir=gt_imgs_dir)
 
     torch.manual_seed(42)
     # Instanciating train, validation and test datasets
@@ -80,88 +81,166 @@ if __name__ == "__main__":
     for i in range(epochs):
         # Set the model to train mode
         segmentor.train()
+        critic_0.train()
         critic_1.train()
         critic_2.train()
-        critic_3.train()
         for j, (input_img, gt_3d) in enumerate(train_loader):
-            #print(input_img.shape)
-            #print(gt_3d.shape)
+            # print(input_img.shape)
+            # print(gt_3d.shape)
 
             # Transfer loaded data to GPU if cuda is available
-            #if torch.cuda.is_available:
+            # if torch.cuda.is_available:
             if train_gpu:
                 input_img = input_img.cuda()
                 gt_3d = gt_3d.cuda()
 
             # "TRAIN C NET"
-            optimizer_c.zero_grad()
-            # Pass input images forward through the segmentor
-            output_s = segmentor.forward(input_img)
+            output = segmentor(input_img)
+            # output = F.sigmoid(output*k)
+            output = F.sigmoid(output)
 
-            # For Critic_1
-            output_1 = output_s[:, 0, :, :]
-            target_1 = gt_3d[:, 0, :, :]
-            # For Critic_2
-            output_2 = output_s[:, 1, :, :]
-            target_2 = gt_3d[:, 1, :, :]
-            # For Critic_3
-            output_3 = output_s[:, 2, :, :]
-            target_3 = gt_3d[:, 2, :, :]
+            output = output.detach()
+            output_masked = input_img.clone()
+            input_mask = input_img.clone()
+            # detach G from the network
+            for d in range(3):
+                output_masked[:, d, :, :] = input_mask[:, d, :, :] * output[:, d, :, :]
+            if train_gpu:
+                output_masked = output_masked.cuda()
 
-            # Forward pass through critic nets
-            output_c1 = critic_1.forward(predicted_seg=output_1.detach(), gt_seg=target_1.detach(),
-                                         input_img=input_img.clone())
-            output_c2 = critic_2.forward(predicted_seg=output_2.detach(), gt_seg=target_2.detach(),
-                                         input_img=input_img.clone())
-            output_c3 = critic_3.forward(predicted_seg=output_3.detach(), gt_seg=target_3.detach(),
-                                         input_img=input_img.clone())
+            target_masked = input_img.clone()
+            for d in range(3):
+                target_masked[:, d, :, :] = input_mask[:, d, :, :] * gt_3d[:, d, :, :]
+            if train_gpu:
+                target_masked = target_masked.cuda()
 
-            # Compute loss due to each critic net
-            loss1 = multi_scale_L1_loss(c_output=output_c1)
-            loss2 = multi_scale_L1_loss(c_output=output_c2)
-            loss3 = multi_scale_L1_loss(c_output=output_c3)
+            result_C_0 = critic_0(output_masked)
+            result_C_1 = critic_1(output_masked)
+            result_C_2 = critic_2(output_masked)
 
-            # Compute average Loss
-            # Multiply by (-1) because we want the critic to MAXIMIZE the loss during training
-            loss_c = (-1) * (loss1 + loss2 + loss3) / 3
+            target_C_0 = critic_0(target_masked)
+            target_C_1 = critic_1(target_masked)
+            target_C_2 = critic_2(target_masked)
 
-            # Backprob & update critic parameters
-            loss_c.backward()
+            loss_C = - torch.mean(torch.abs(result_C_0 - target_C_0) + torch.abs(result_C_1 - target_C_1) + torch.abs(
+                result_C_2 - target_C_2))
+            loss_C.backward()
             optimizer_c.step()
 
-            # "TRAIN S NET"
-            optimizer_s.zero_grad()
-            # The same input_img is required to be passed through the same net --> forward pass is not necessary and we can use output_s from before
+            # clip parameters in D
+            for p in critic_0.parameters():
+                p.data.clamp_(-0.05, 0.05)
 
-            # For Critic_1
-            output_1 = output_s[:, 0, :, :]
-            target_1 = gt_3d[:, 0, :, :]
-            # For Critic_2
-            output_2 = output_s[:, 1, :, :]
-            target_2 = gt_3d[:, 1, :, :]
-            # For Critic_3
-            output_3 = output_s[:, 2, :, :]
-            target_3 = gt_3d[:, 2, :, :]
+            for p in critic_1.parameters():
+                p.data.clamp_(-0.05, 0.05)
 
-            # Forward pass through critic nets --> this time we should not use detach
-            output_c1 = critic_1.forward(predicted_seg=output_1, gt_seg=target_1, input_img=input_img.clone())
-            output_c2 = critic_2.forward(predicted_seg=output_2, gt_seg=target_2, input_img=input_img.clone())
-            output_c3 = critic_3.forward(predicted_seg=output_3, gt_seg=target_3, input_img=input_img.clone())
+            for p in critic_2.parameters():
+                p.data.clamp_(-0.05, 0.05)
 
-            # Compute loss due to each critic net
-            loss1 = multi_scale_L1_loss(c_output=output_c1)
-            loss2 = multi_scale_L1_loss(c_output=output_c2)
-            loss3 = multi_scale_L1_loss(c_output=output_c3)
+            # train G
+            segmentor.zero_grad()
+            output = segmentor(input_img)
+            output = F.sigmoid(output)
 
-            # Compute dice loss
-            loss_dice = dice_loss(output_s, gt_3d)
+            output_masked = input_img.clone()
+            for d in range(3):
+                output_masked[:, d, :, :] = input_mask[:, d, :, :] * output[:, d, :, :]
+            if train_gpu:
+                output_masked = output_masked.cuda()
 
-            # Compute average Loss
-            loss_s = (loss1 + loss2 + loss3) / 3 + loss_dice
-            print(loss_s)
-            # Backprob & update segmentor parameters
-            loss_s.backward()
+            for d in range(3):
+                target_masked[:, d, :, :] = input_mask[:, d, :, :] * gt_3d[:, d, :, :]
+            if train_gpu:
+                target_masked = target_masked.cuda()
+
+            result_C_0 = critic_0(output_masked)
+            result_C_1 = critic_1(output_masked)
+            result_C_2 = critic_2(output_masked)
+
+            target_C_0 = critic_0(target_masked)
+            target_C_1 = critic_1(target_masked)
+            target_C_2 = critic_2(target_masked)
+
+            loss_dice_0 = dice_loss(output, gt_3d)
+            loss_dice_1 = dice_loss(output, gt_3d)
+            loss_dice_2 = dice_loss(output, gt_3d)
+
+            loss_C_0 = torch.mean(torch.abs(result_C_0 - target_C_0))
+            loss_C_1 = torch.mean(torch.abs(result_C_1 - target_C_1))
+            loss_C_2 = torch.mean(torch.abs(result_C_2 - target_C_2))
+
+            loss_S_joint = torch.mean(loss_C_0 + loss_C_1 + loss_C_2) / 3 + torch.mean(loss_dice_0 + loss_dice_1 + loss_dice_2) / 3
+            loss_S_joint.backward()
             optimizer_s.step()
+            print(f'Segmentor Loss: {loss_S_joint}, Critic Loss: {loss_C}')
+            # optimizer_c.zero_grad()
+            # # Pass input images forward through the segmentor
+            # output_s = segmentor.forward(input_img)
+            #
+            # # For Critic_1
+            # output_1 = output_s[:, 0, :, :]
+            # target_1 = gt_3d[:, 0, :, :]
+            # # For Critic_2
+            # output_2 = output_s[:, 1, :, :]
+            # target_2 = gt_3d[:, 1, :, :]
+            # # For Critic_3
+            # output_3 = output_s[:, 2, :, :]
+            # target_3 = gt_3d[:, 2, :, :]
+            #
+            # # Forward pass through critic nets
+            # output_c1 = critic_1.forward(predicted_seg=output_1.detach(), gt_seg=target_1.detach(),
+            #                              input_img=input_img.clone())
+            # output_c2 = critic_2.forward(predicted_seg=output_2.detach(), gt_seg=target_2.detach(),
+            #                              input_img=input_img.clone())
+            # output_c3 = critic_3.forward(predicted_seg=output_3.detach(), gt_seg=target_3.detach(),
+            #                              input_img=input_img.clone())
+            #
+            # # Compute loss due to each critic net
+            # loss1 = multi_scale_L1_loss(c_output=output_c1)
+            # loss2 = multi_scale_L1_loss(c_output=output_c2)
+            # loss3 = multi_scale_L1_loss(c_output=output_c3)
+            #
+            # # Compute average Loss
+            # # Multiply by (-1) because we want the critic to MAXIMIZE the loss during training
+            # loss_c = (-1) * (loss1 + loss2 + loss3) / 3
+            #
+            # # Backprob & update critic parameters
+            # loss_c.backward()
+            # optimizer_c.step()
+            #
+            # # "TRAIN S NET"
+            # optimizer_s.zero_grad()
+            # # The same input_img is required to be passed through the same net --> forward pass is not necessary and we can use output_s from before
+            #
+            # # For Critic_1
+            # output_1 = output_s[:, 0, :, :]
+            # target_1 = gt_3d[:, 0, :, :]
+            # # For Critic_2
+            # output_2 = output_s[:, 1, :, :]
+            # target_2 = gt_3d[:, 1, :, :]
+            # # For Critic_3
+            # output_3 = output_s[:, 2, :, :]
+            # target_3 = gt_3d[:, 2, :, :]
+            #
+            # # Forward pass through critic nets --> this time we should not use detach
+            # output_c1 = critic_1.forward(predicted_seg=output_1, gt_seg=target_1, input_img=input_img.clone())
+            # output_c2 = critic_2.forward(predicted_seg=output_2, gt_seg=target_2, input_img=input_img.clone())
+            # output_c3 = critic_3.forward(predicted_seg=output_3, gt_seg=target_3, input_img=input_img.clone())
+            #
+            # # Compute loss due to each critic net
+            # loss1 = multi_scale_L1_loss(c_output=output_c1)
+            # loss2 = multi_scale_L1_loss(c_output=output_c2)
+            # loss3 = multi_scale_L1_loss(c_output=output_c3)
+            #
+            # # Compute dice loss
+            # loss_dice = dice_loss(output_s, gt_3d)
+            #
+            # # Compute average Loss
+            # loss_s = (loss1 + loss2 + loss3) / 3 + loss_dice
+            # print(loss_s)
+            # # Backprob & update segmentor parameters
+            # loss_s.backward()
+            # optimizer_s.step()
 
             # Compute evaluation metrics and save values to tensorboard in the second to last epoch
             if j == len(train_loader) - 2:
@@ -182,17 +261,17 @@ if __name__ == "__main__":
                 writer.add_scalar('Critic Loss/train', loss_c, i + 1)
                 writer.add_scalar('Segmentor Loss/train', loss_s, i + 1)
 
-    ####################
-    # Evaluation process
-    ####################
+        ####################
+        # Evaluation process
+        ####################
 
-    # After each epoch we evaluate the model and save evaluation metrics
+        # After each epoch we evaluate the model and save evaluation metrics
         with torch.no_grad():
             # Set models on evaluation mode
             segmentor.eval()
+            critic_0.eval()
             critic_1.eval()
             critic_2.eval()
-            critic_3.eval()
 
             recall_val_avg = 0
             precision_val_avg = 0
@@ -204,7 +283,7 @@ if __name__ == "__main__":
 
             for j, (input_img_val, gt_3d_val) in enumerate(validation_loader):
                 # Transfer loaded data to GPU if cuda is available
-                #if torch.cuda.is_available:
+                # if torch.cuda.is_available:
                 if train_gpu:
                     input_img_val = input_img_val.cuda()
                     gt_3d_val = gt_3d_val.cuda()
@@ -234,11 +313,11 @@ if __name__ == "__main__":
                 target_3_val = gt_3d_val[:, 2, :, :]
 
                 # Forward pass through critic nets --> this time we should not use detach
-                output_c1_val = critic_1.forward(predicted_seg=output_1_val, gt_seg=target_1_val,
+                output_c1_val = critic_0.forward(predicted_seg=output_1_val, gt_seg=target_1_val,
                                                  input_img=input_img_val.clone())
-                output_c2_val = critic_2.forward(predicted_seg=output_2_val, gt_seg=target_2_val,
+                output_c2_val = critic_1.forward(predicted_seg=output_2_val, gt_seg=target_2_val,
                                                  input_img=input_img_val.clone())
-                output_c3_val = critic_3.forward(predicted_seg=output_3_val, gt_seg=target_3_val,
+                output_c3_val = critic_2.forward(predicted_seg=output_3_val, gt_seg=target_3_val,
                                                  input_img=input_img_val.clone())
 
                 # Compute the loss_s, loss_c and loss_dice for the validation data
@@ -284,16 +363,6 @@ if __name__ == "__main__":
         f"==> EPOCH {i + 1}({i + 1}/{epochs}) Train Dice Loss: {loss_dice:.8f}   Validation Dice Loss: {loss_dice_val:.8f}")
     print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Segmentor Loss:{loss_s:.4f}")
     print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Critic Loss:{loss_c:.4f} \n")
-
-
-
-
-
-
-
-
-
-
 
 #     optimizer_S = optim.Adam(NetS.params(), lr=args.lr, betas=(args.beta1, args.beta2))
 #     optimizer_C = optim.Adam(NetC.params(), lr=args.lr, betas=(args.beta1, args.beta2))

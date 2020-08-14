@@ -1,3 +1,4 @@
+import torch
 def segmentor_evaluation(s_output, s_target):
   """
   This function creates the batch_averaged FP(flase positive), TP(true positive), FN(flase negative) and TN(true negative) values for the segmented output
