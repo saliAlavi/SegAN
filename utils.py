@@ -50,10 +50,10 @@ def accuracy(TP, FP, TN, FN):
   accuracy = (TP+TN)/(TP+FP+TN+FN)
   return accuracy
 
-  def custom_replace(tensor, on_zero, on_non_zero):
-    # we create a copy of the original tensor,
-    # because of the way we are replacing them.
-    res = tensor.clone()
-    res[tensor == 0] = on_zero
-    res[tensor != 0] = on_non_zero
-    return res
+def custom_replace(tensor, on_zero, on_non_zero):
+  # we create a copy of the original tensor,
+  # because of the way we are replacing them.
+  res = tensor.clone()
+  res[tensor == 0] = on_zero
+  res[tensor != 0] = on_non_zero
+  return res

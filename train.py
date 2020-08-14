@@ -20,7 +20,7 @@ if __name__ == "__main__":
     learning_rate = 0.00002
     epochs = 10
     threshold = 0.5
-    train_gpu=False
+    train_gpu=True
     batch_size=128
     writer = SummaryWriter(log_dir="./runs")
 
