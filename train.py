@@ -137,7 +137,7 @@ if __name__ == "__main__":
             for p in critic_2.parameters():
                 p.data.clamp_(-0.05, 0.05)
 
-            # train G
+            # train S
             segmentor.zero_grad()
             output = segmentor(input_img)
             output = F.sigmoid(output)
@@ -169,84 +169,17 @@ if __name__ == "__main__":
             loss_C_1 = torch.mean(torch.abs(result_C_1 - target_C_1))
             loss_C_2 = torch.mean(torch.abs(result_C_2 - target_C_2))
 
-            loss_S_joint = torch.mean(loss_C_0 + loss_C_1 + loss_C_2) / 3 + torch.mean(loss_dice_0 + loss_dice_1 + loss_dice_2) / 3
+            loss_S_joint = torch.mean(loss_C_0 + loss_C_1 + loss_C_2) / 3 + torch.mean(
+                loss_dice_0 + loss_dice_1 + loss_dice_2) / 3
             loss_S_joint.backward()
             optimizer_s.step()
             print(f'Segmentor Loss: {loss_S_joint}, Critic Loss: {loss_C}')
-            # optimizer_c.zero_grad()
-            # # Pass input images forward through the segmentor
-            # output_s = segmentor.forward(input_img)
-            #
-            # # For Critic_1
-            # output_1 = output_s[:, 0, :, :]
-            # target_1 = gt_3d[:, 0, :, :]
-            # # For Critic_2
-            # output_2 = output_s[:, 1, :, :]
-            # target_2 = gt_3d[:, 1, :, :]
-            # # For Critic_3
-            # output_3 = output_s[:, 2, :, :]
-            # target_3 = gt_3d[:, 2, :, :]
-            #
-            # # Forward pass through critic nets
-            # output_c1 = critic_1.forward(predicted_seg=output_1.detach(), gt_seg=target_1.detach(),
-            #                              input_img=input_img.clone())
-            # output_c2 = critic_2.forward(predicted_seg=output_2.detach(), gt_seg=target_2.detach(),
-            #                              input_img=input_img.clone())
-            # output_c3 = critic_3.forward(predicted_seg=output_3.detach(), gt_seg=target_3.detach(),
-            #                              input_img=input_img.clone())
-            #
-            # # Compute loss due to each critic net
-            # loss1 = multi_scale_L1_loss(c_output=output_c1)
-            # loss2 = multi_scale_L1_loss(c_output=output_c2)
-            # loss3 = multi_scale_L1_loss(c_output=output_c3)
-            #
-            # # Compute average Loss
-            # # Multiply by (-1) because we want the critic to MAXIMIZE the loss during training
-            # loss_c = (-1) * (loss1 + loss2 + loss3) / 3
-            #
-            # # Backprob & update critic parameters
-            # loss_c.backward()
-            # optimizer_c.step()
-            #
-            # # "TRAIN S NET"
-            # optimizer_s.zero_grad()
-            # # The same input_img is required to be passed through the same net --> forward pass is not necessary and we can use output_s from before
-            #
-            # # For Critic_1
-            # output_1 = output_s[:, 0, :, :]
-            # target_1 = gt_3d[:, 0, :, :]
-            # # For Critic_2
-            # output_2 = output_s[:, 1, :, :]
-            # target_2 = gt_3d[:, 1, :, :]
-            # # For Critic_3
-            # output_3 = output_s[:, 2, :, :]
-            # target_3 = gt_3d[:, 2, :, :]
-            #
-            # # Forward pass through critic nets --> this time we should not use detach
-            # output_c1 = critic_1.forward(predicted_seg=output_1, gt_seg=target_1, input_img=input_img.clone())
-            # output_c2 = critic_2.forward(predicted_seg=output_2, gt_seg=target_2, input_img=input_img.clone())
-            # output_c3 = critic_3.forward(predicted_seg=output_3, gt_seg=target_3, input_img=input_img.clone())
-            #
-            # # Compute loss due to each critic net
-            # loss1 = multi_scale_L1_loss(c_output=output_c1)
-            # loss2 = multi_scale_L1_loss(c_output=output_c2)
-            # loss3 = multi_scale_L1_loss(c_output=output_c3)
-            #
-            # # Compute dice loss
-            # loss_dice = dice_loss(output_s, gt_3d)
-            #
-            # # Compute average Loss
-            # loss_s = (loss1 + loss2 + loss3) / 3 + loss_dice
-            # print(loss_s)
-            # # Backprob & update segmentor parameters
-            # loss_s.backward()
-            # optimizer_s.step()
 
             # Compute evaluation metrics and save values to tensorboard in the second to last epoch
             if j == len(train_loader) - 2:
                 # Compute metric values
 
-                TP_trn, FP_trn, TN_trn, FN_trn = segmentor_evaluation(s_output=output_s, s_target=gt_3d)
+                TP_trn, FP_trn, TN_trn, FN_trn = segmentor_evaluation(s_output=output, s_target=gt_3d)
                 recall_trn = recall(TP=TP_trn, FN=FN_trn)
                 precision_trn = precision(TP=TP_trn, FP=FP_trn)
                 false_positive_rate_trn = false_positive_rate(FP=FP_trn, TN=TN_trn)
@@ -257,9 +190,9 @@ if __name__ == "__main__":
                 writer.add_scalar('Precision/train', precision_trn, i + 1)
                 writer.add_scalar('False Positive Rate/train', false_positive_rate_trn, i + 1)
                 writer.add_scalar('Accuracy/train', accuracy_trn, i + 1)
-                writer.add_scalar('Dice Loss/train', loss_dice, i + 1)
-                writer.add_scalar('Critic Loss/train', loss_c, i + 1)
-                writer.add_scalar('Segmentor Loss/train', loss_s, i + 1)
+                writer.add_scalar('Dice Loss/train', loss_dice_0 + loss_dice_1 + loss_dice_2, i + 1)
+                writer.add_scalar('Critic Loss/train', loss_C_0 + loss_C_0 + loss_C_0, i + 1)
+                writer.add_scalar('Segmentor Loss/train', loss_S_joint, i + 1)
 
         ####################
         # Evaluation process
@@ -302,34 +235,45 @@ if __name__ == "__main__":
                 false_positive_rate_val = false_positive_rate(FP=FP_val, TN=TN_val)
                 accuracy_val = accuracy(TP=TP_val, FP=FP_val, TN=TN_val, FN=FN_val)
 
-                # For Critic_1
-                output_1_val = output_s_val[:, 0, :, :]
-                target_1_val = gt_3d_val[:, 0, :, :]
-                # For Critic_2
-                output_2_val = output_s_val[:, 1, :, :]
-                target_2_val = gt_3d_val[:, 1, :, :]
-                # For Critic_3
-                output_3_val = output_s_val[:, 2, :, :]
-                target_3_val = gt_3d_val[:, 2, :, :]
+                output = segmentor(input_img)
+                output = F.sigmoid(output)
 
-                # Forward pass through critic nets --> this time we should not use detach
-                output_c1_val = critic_0.forward(predicted_seg=output_1_val, gt_seg=target_1_val,
-                                                 input_img=input_img_val.clone())
-                output_c2_val = critic_1.forward(predicted_seg=output_2_val, gt_seg=target_2_val,
-                                                 input_img=input_img_val.clone())
-                output_c3_val = critic_2.forward(predicted_seg=output_3_val, gt_seg=target_3_val,
-                                                 input_img=input_img_val.clone())
+                output = output.detach()
+                output_masked = input_img.clone()
+                input_mask = input_img.clone()
+                # detach G from the network
+                for d in range(3):
+                    output_masked[:, d, :, :] = input_mask[:, d, :, :] * output[:, d, :, :]
+                if train_gpu:
+                    output_masked = output_masked.cuda()
+
+                target_masked = input_img.clone()
+                for d in range(3):
+                    target_masked[:, d, :, :] = input_mask[:, d, :, :] * gt_3d[:, d, :, :]
+                if train_gpu:
+                    target_masked = target_masked.cuda()
+
+                result_C_0 = critic_0(output_masked)
+                result_C_1 = critic_1(output_masked)
+                result_C_2 = critic_2(output_masked)
+
+                target_C_0 = critic_0(target_masked)
+                target_C_1 = critic_1(target_masked)
+                target_C_2 = critic_2(target_masked)
+
+                loss_C_0_val = torch.mean(torch.abs(result_C_0 - target_C_0))
+                loss_C_1_val = torch.mean(torch.abs(result_C_1 - target_C_1))
+                loss_C_2_val = torch.mean(torch.abs(result_C_2 - target_C_2))
+                loss_C = - torch.mean(
+                    torch.abs(result_C_0 - target_C_0) + torch.abs(result_C_1 - target_C_1) + torch.abs(
+                        result_C_2 - target_C_2))
 
                 # Compute the loss_s, loss_c and loss_dice for the validation data
                 loss_dice_val = dice_loss(output_s_val, gt_3d_val)
 
-                # Compute loss due to each critic net
-                loss1_val = multi_scale_L1_loss(c_output=output_c1_val)
-                loss2_val = multi_scale_L1_loss(c_output=output_c2_val)
-                loss3_val = multi_scale_L1_loss(c_output=output_c3_val)
                 # Compute the loss_s, loss_c for the validation data
-                loss_c_val = (-1) * (loss1_val + loss2_val + loss3_val) / 3
-                loss_s_val = (loss1_val + loss2_val + loss3_val) / 3 + loss_dice_val
+                loss_c_val = (-1) * (loss_C_0_val + loss_C_1_val + loss_C_2_val) / 3
+                loss_s_val = (loss_C_0_val + loss_C_1_val + loss_C_2_val) / 3 + loss_dice_val
 
                 # Save the Computed parameters --> to be averaged
                 recall_val_avg += recall_val
@@ -360,9 +304,9 @@ if __name__ == "__main__":
 
     # Print results at the end of earch epoch
     print(
-        f"==> EPOCH {i + 1}({i + 1}/{epochs}) Train Dice Loss: {loss_dice:.8f}   Validation Dice Loss: {loss_dice_val:.8f}")
-    print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Segmentor Loss:{loss_s:.4f}")
-    print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Critic Loss:{loss_c:.4f} \n")
+        f"==> EPOCH {i + 1}({i + 1}/{epochs}) Train Dice Loss: {loss_dice_0+loss_dice_1+loss_dice_2:.8f}   Validation Dice Loss: {loss_dice_val:.8f}")
+    print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Segmentor Loss:{loss_S_joint:.4f}")
+    print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Critic Loss:{loss_C:.4f} \n")
 
 #     optimizer_S = optim.Adam(NetS.params(), lr=args.lr, betas=(args.beta1, args.beta2))
 #     optimizer_C = optim.Adam(NetC.params(), lr=args.lr, betas=(args.beta1, args.beta2))
