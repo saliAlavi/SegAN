@@ -21,7 +21,9 @@ if __name__ == "__main__":
     epochs = 10
     threshold = 0.5
     train_gpu=True
-    batch_size=128
+    batch_size=160
+    lr=0.02
+    beta1=0.5
     writer = SummaryWriter(log_dir="./runs")
 
     # NetS = Segmentor()
@@ -37,11 +39,12 @@ if __name__ == "__main__":
     torch.manual_seed(42)
     # Define the optimizers
     s_parameters = segmentor.parameters()
-    optimizer_s = torch.optim.RMSprop(s_parameters, lr=learning_rate)
+    #optimizer_s = torch.optim.RMSprop(s_parameters, lr=learning_rate)
+    optimizer_s =optim.Adam(s_parameters, lr=lr, betas=(beta1, 0.999))
 
     c_parameters = list(critic_1.parameters()) + list(critic_2.parameters()) + list(critic_3.parameters())
-    optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
-
+    #optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
+    optimizer_c=optimizer_s =optim.Adam(s_parameters, lr=lr, betas=(beta1, 0.999))
     #if torch.cuda.is_available():
     if train_gpu:
         segmentor = segmentor.cuda()
