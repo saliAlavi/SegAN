@@ -20,6 +20,7 @@ if __name__ == "__main__":
     learning_rate = 0.00002
     epochs = 10
     threshold = 0.5
+    train_gpu=False
     batch_size=4
     writer = SummaryWriter(log_dir="./runs")
 
@@ -41,7 +42,8 @@ if __name__ == "__main__":
     c_parameters = list(critic_1.parameters()) + list(critic_2.parameters()) + list(critic_3.parameters())
     optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
 
-    if torch.cuda.is_available():
+    #if torch.cuda.is_available():
+    if train_gpu:
         segmentor = segmentor.cuda()
         critic_1 = critic_1.cuda()
         critic_2 = critic_2.cuda()
@@ -83,7 +85,8 @@ if __name__ == "__main__":
             #print(gt_3d.shape)
 
             # Transfer loaded data to GPU if cuda is available
-            if torch.cuda.is_available:
+            #if torch.cuda.is_available:
+            if train_gpu:
                 input_img = input_img.cuda()
                 gt_3d = gt_3d.cuda()
 
@@ -198,7 +201,8 @@ if __name__ == "__main__":
 
             for j, (input_img_val, gt_3d_val) in enumerate(validation_loader):
                 # Transfer loaded data to GPU if cuda is available
-                if torch.cuda.is_available:
+                #if torch.cuda.is_available:
+                if train_gpu:
                     input_img_val = input_img_val.cuda()
                     gt_3d_val = gt_3d_val.cuda()
 

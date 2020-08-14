@@ -48,7 +48,7 @@ for folder in main_dir:
             # plt.imshow(array[:,:,:,51])
             # write_gif(array.transpose((3,0,1,2)),f'movie{i}.gif',fps=300)
             save_path = os.path.join(dataset_path, 'segmentation', file_name)
-            print('saving', file_name, 'in',save_path)
+            #print('saving', file_name, 'in',save_path)
             for j, image in enumerate(array):
                 # print(image.shape)
                 im = Image.fromarray(image)
@@ -65,12 +65,3 @@ for folder in main_dir:
                     for j, image in enumerate(npdata.transpose(2, 0, 1)):
                         im = Image.fromarray(image)
                         im.save(save_path + str(j) + '.png')
-
-
-
-
-
-
-
-
-
