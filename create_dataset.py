@@ -20,6 +20,7 @@ folder_name = 'MICCAI_BraTS2020_TrainingData'
 dataset_path = 'dataset'
 
 main_dir = os.listdir(folder_name)
+main_dir=[ name for name in os.listdir(folder_name) if os.path.isdir(os.path.join(folder_name, name)) ]
 make_dir(dataset_path)
 for image_type in image_types:
     make_dir(os.path.join(dataset_path, image_type))
