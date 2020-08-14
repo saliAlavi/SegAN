@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import imageio
 from array2gif import write_gif
 from PIL import Image
-
+from tqdm import tqdm_notebook as tqdm
 
 def make_dir(path):
     if (not os.path.isdir(path)):
@@ -25,7 +25,7 @@ make_dir(dataset_path)
 for image_type in image_types:
     make_dir(os.path.join(dataset_path, image_type))
 
-for folder in main_dir:
+for folder in tqdm(main_dir):
     cur_dir = os.path.join(folder_name, folder)
     cur_dir_files = os.listdir(cur_dir)
     for i, file_name in enumerate(cur_dir_files):

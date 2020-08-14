@@ -194,6 +194,10 @@ if __name__ == "__main__":
                 writer.add_scalar('Critic Loss/train', loss_C_0 + loss_C_0 + loss_C_0, i + 1)
                 writer.add_scalar('Segmentor Loss/train', loss_S_joint, i + 1)
 
+        segmentor.save(os.path.join('saved_model',   f'seg_ep_{i}'))
+        critic_0.save(os.path.join('saved_model', f'crit_0_ep_{i}'))
+        critic_1.save(os.path.join('saved_model', f'crit_1_ep_{i}'))
+        critic_1.save(os.path.join('saved_model', f'crit_2_ep_{i}'))
         ####################
         # Evaluation process
         ####################

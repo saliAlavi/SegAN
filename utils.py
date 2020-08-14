@@ -1,4 +1,5 @@
 import torch
+import os
 def segmentor_evaluation(s_output, s_target):
   """
   This function creates the batch_averaged FP(flase positive), TP(true positive), FN(flase negative) and TN(true negative) values for the segmented output
@@ -58,3 +59,7 @@ def custom_replace(tensor, on_zero, on_non_zero):
   res[tensor == 0] = on_zero
   res[tensor != 0] = on_non_zero
   return res
+
+def make_dir(path):
+  if (not os.path.isdir(path)):
+    os.makedirs(path)
