@@ -5,6 +5,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms, models
 import torchvision.transforms.functional as TF
+from torchvision.transforms import Compose, CenterCrop, Normalize, ToTensor
 # I have placed a manual seed in line 34 to make code reproducible
 
 def get_data(flair_imgs_dir, t1ce_imgs_dir, t2_imgs_dir, gt_imgs_dir, train_val_test_split=(0.7, 0.15, 0.15)):
@@ -13,10 +14,10 @@ def get_data(flair_imgs_dir, t1ce_imgs_dir, t2_imgs_dir, gt_imgs_dir, train_val_
     t1ce_imgs_list = os.listdir(t1ce_imgs_dir)
     t2_imgs_list = os.listdir(t2_imgs_dir)
     gt_imgs_list = os.listdir(gt_imgs_dir)
-    print(len(flair_imgs_list))
-    print(len(t1ce_imgs_list))
-    print(len(t2_imgs_list))
-    print(len(gt_imgs_list))
+    # print(len(flair_imgs_list))
+    # print(len(t1ce_imgs_list))
+    # print(len(t2_imgs_list))
+    # print(len(gt_imgs_list))
     flair_imgs_list.sort()
     t1ce_imgs_list.sort()
     t2_imgs_list.sort()
@@ -108,6 +109,18 @@ class Train_Dataset(Dataset):
         t2_np = np.array(TF.resize(t2_PIL,(160,160)))
         gt_np=np.array(TF.resize(gt_PIL,(160,160)))
 
+        img_transform_3 = Compose([
+            ToTensor(),
+            Normalize(mean=[0.5,0.5,0.5], std=[0.5,0.5,0.5]),
+        ])
+        img_transform_1 = Compose([
+            ToTensor(),
+            Normalize(mean=[0.5], std=[0.5]),
+        ])
+        flair_t=img_transform_1(flair_np)
+        t1ce_t = img_transform_1(t1ce_np)
+        t2_t = img_transform_1(t2_np)
+        gt_t = img_transform_3(gt_np)
         # Create ground_truth mask
         # gt_3d = np.zeros((3, 160, 160))
         # gt_3d[0, :, :] = (gt_np == 1)
@@ -116,13 +129,20 @@ class Train_Dataset(Dataset):
         # gt_3d[0, :, :] =gt_np[:,:,0]
         # gt_3d[1, :, :] =gt_np[:,:,1]
         # gt_3d[2, :, :] =gt_np[:,:,2]
-        gt_3d=gt_np.transpose(2,0,1)
+        #gt_3d=gt_np.transpose(2,0,1)
+        #gt_3d_t=gt_t.transpose(2,0,1)
+        # gt_3d_t=torch.transpose(gt_t,1,2)
+        # gt_3d_t = torch.transpose(gt_3d_t, 0, 1)
+        input_img_t=torch.stack((flair_t, t1ce_t, t2_t), axis=0)
+        input_img_t=torch.squeeze(input_img_t)
 
         # Stack the input images
-        input_img = np.stack((flair_np, t1ce_np, t2_np), axis=0)
+        #input_img = np.stack((flair_np, t1ce_np, t2_np), axis=0)
+
 
         # Return input as a C*H*W tensor and ground_truth mask as  3*H*W tensor -> 3 is for the 3 types of tumors
-        return (torch.tensor(input_img, dtype=torch.float)), (torch.tensor(gt_3d, dtype=torch.float))
+        #return (torch.tensor(input_img, dtype=torch.float)), (torch.tensor(gt_3d, dtype=torch.float))
+        return (torch.tensor(input_img_t, dtype=torch.float)), (torch.tensor(gt_t, dtype=torch.float))
 
     def __len__(self):
         '''returns the length of the entire dataset'''
