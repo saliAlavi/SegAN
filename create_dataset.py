@@ -1,12 +1,6 @@
-import gzip
-import shutil
 import os
 import nibabel as nib
-from tifffile import imsave, imread
 import numpy as np
-import matplotlib.pyplot as plt
-import imageio
-from array2gif import write_gif
 from PIL import Image
 from tqdm import tqdm_notebook as tqdm
 
@@ -45,13 +39,12 @@ for folder in tqdm(main_dir):
             array[:, :, 2, :] = np.where(npdata == 4, 255 * np.ones((x, y, n)), np.zeros((x, y, n)))
             array = array.astype(np.uint8)
             array = array.transpose(3, 0, 1, 2)
-            # print(array.shape)
-            # plt.imshow(array[:,:,:,51])
-            # write_gif(array.transpose((3,0,1,2)),f'movie{i}.gif',fps=300)
             save_path = os.path.join(dataset_path, 'segmentation', file_name)
-            #print('saving', file_name, 'in',save_path)
             for j, image in enumerate(array):
-                # print(image.shape)
+                if j <40:
+                    continue
+                if j>80:
+                    break
                 im = Image.fromarray(image)
                 im.save(save_path + str(j) + '.png')
         else:

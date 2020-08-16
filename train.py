@@ -1,7 +1,3 @@
-import torch.nn as nn
-import torch.nn.functional as F
-import torch
-import numpy as np
 from model import *
 from create_dataloader import *
 import torch.optim as optim
@@ -26,9 +22,6 @@ if __name__ == "__main__":
     beta1 = 0.5
     writer = SummaryWriter(log_dir="./runs")
 
-    # NetS = Segmentor()
-    # NetC = Critic()
-
     torch.manual_seed(100)
     # Instantiate the Segmentor(3 output channels) and 3 Critics (1 input channel)
     segmentor = Segmentor(3, 3)
@@ -39,11 +32,9 @@ if __name__ == "__main__":
     torch.manual_seed(42)
     # Define the optimizers
     s_parameters = segmentor.parameters()
-    # optimizer_s = torch.optim.RMSprop(s_parameters, lr=learning_rate)
     optimizer_s = optim.Adam(s_parameters, lr=lr, betas=(beta1, 0.999))
 
     c_parameters = list(critic_0.parameters()) + list(critic_1.parameters()) + list(critic_2.parameters())
-    # optimizer_c = torch.optim.RMSprop(c_parameters, lr=learning_rate)
     optimizer_c = optimizer_s = optim.Adam(c_parameters, lr=lr, betas=(beta1, 0.999))
     # if torch.cuda.is_available():
     if train_gpu:
@@ -85,18 +76,13 @@ if __name__ == "__main__":
         critic_1.train()
         critic_2.train()
         for j, (input_img, gt_3d) in enumerate(train_loader):
-            # print(input_img.shape)
-            # print(gt_3d.shape)
-
             # Transfer loaded data to GPU if cuda is available
-            # if torch.cuda.is_available:
             if train_gpu:
                 input_img = input_img.cuda()
                 gt_3d = gt_3d.cuda()
 
             # "TRAIN C NET"
             output = segmentor(input_img)
-            # output = F.sigmoid(output*k)
             output = F.sigmoid(output)
 
             output = output.detach()
@@ -220,7 +206,6 @@ if __name__ == "__main__":
 
             for j, (input_img_val, gt_3d_val) in enumerate(validation_loader):
                 # Transfer loaded data to GPU if cuda is available
-                # if torch.cuda.is_available:
                 if train_gpu:
                     input_img_val = input_img_val.cuda()
                     gt_3d_val = gt_3d_val.cuda()
@@ -311,49 +296,3 @@ if __name__ == "__main__":
         f"==> EPOCH {i + 1}({i + 1}/{epochs}) Train Dice Loss: {loss_dice_0+loss_dice_1+loss_dice_2:.8f}   Validation Dice Loss: {loss_dice_val:.8f}")
     print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Segmentor Loss:{loss_S_joint:.4f}")
     print(f"==> EPOCH {i + 1}({i + 1}/{epochs}) Critic Loss:{loss_C:.4f} \n")
-
-#     optimizer_S = optim.Adam(NetS.params(), lr=args.lr, betas=(args.beta1, args.beta2))
-#     optimizer_C = optim.Adam(NetC.params(), lr=args.lr, betas=(args.beta1, args.beta2))
-#
-#     if args.gpu:
-#         device = torch.device('cuda')
-#         NetS = NetS.to(device)
-#         NetC = NetC.to(device)
-# for epoch in range(1, args.epochs + 1):
-#     NetS.train()
-#     for j, data in enumerate(dl_BraT_train, 1):
-#         optimizer_C.zero_grad()
-#         optimizer_S.zero_grad()
-#
-#         image, gt = data
-#
-#         seg_out = NetS(image)
-#         seg_out = F.softmax(seg_out)
-#         seg_out = seg_out.detach()
-#         critic_prd, critic_gt = NetC(image, seg_out, gt)
-#
-#         loss_C = 1 - torch.mean(torch.abs(critic_prd - critic_gt))
-#
-#         loss_C.backward()
-#         optimizer_C.step()
-#
-#         for p in NetC.params():
-#             p.data._clamp(-0.01, 0.01)
-#
-#         seg_out = NetS(image)
-#         seg_out = F.softmax(seg_out)
-#         loss_S_target = torch.mean(torch.abs(seg_out, gt))
-#         critic_prd, critic_gt = NetC(image, seg_out, gt)
-#
-#         loss_S_dice = loss_dice(critic_prd, critic_gt)
-#         loss_S = args.alpha * loss_S_dice + loss_S_target
-#
-#         loss_S.backward()
-#         optimizer_S.step()
-#     NetS.eval()
-#     for j, data in enumerate(dl_BraT_val, 1):
-#         image, gt = data
-#
-#         seg_out = NetS(image)
-#         seg_out = F.softmax(seg_out)
-#         loss_S_target = torch.mean(torch.abs(seg_out, gt))
