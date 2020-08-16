@@ -57,5 +57,9 @@ for folder in tqdm(main_dir):
                     npdata = imgVol.get_fdata()
                     npdata = npdata.astype(np.uint8)
                     for j, image in enumerate(npdata.transpose(2, 0, 1)):
+                        if j < 40:
+                            continue
+                        if j > 80:
+                            break
                         im = Image.fromarray(image)
                         im.save(save_path + str(j) + '.png')
