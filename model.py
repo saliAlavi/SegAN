@@ -92,14 +92,14 @@ class Segmentor(nn.Module):
         res_8 = self.deconv_4(res_7)
         return res_8
 
-    def forward(self, x):
-        x_l = self.conv_l1(x)
-        x_l = self.conv_l2(x_l)
-        x_r = self.conv_r1(x)
-        x_r = self.conv_r2(x_r)
-        # combine two paths
-        x = x_l + x_r
-        return x
+    # def forward(self, x):
+    #     x_l = self.conv_l1(x)
+    #     x_l = self.conv_l2(x_l)
+    #     x_r = self.conv_r1(x)
+    #     x_r = self.conv_r2(x_r)
+    #     # combine two paths
+    #     x = x_l + x_r
+    #     return x
 
 
 class Critic(nn.Module):
